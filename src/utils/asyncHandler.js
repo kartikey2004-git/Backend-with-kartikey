@@ -1,13 +1,15 @@
 const asyncHandler = (requestHandler) => {
-  (req,res,next) => {
-    Promise.resolve(requestHandler(req,res,next)).catch((err) => next(err))
+  return (req,res,next) => {
+    Promise
+    .resolve(requestHandler(req,res,next))
+    .catch((err) => next(err))
   }
 }
 
 export {asyncHandler}
 
 
-
+// A higher-order function (HOF) is a function that either takes another function as a parameter or returns a function as a result
 
 
 
