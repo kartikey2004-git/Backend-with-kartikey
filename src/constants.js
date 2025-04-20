@@ -1,1 +1,2 @@
-export const DB_NAME = "videotube"
+// application database name 
+export const DB_NAME = "vidzone"
