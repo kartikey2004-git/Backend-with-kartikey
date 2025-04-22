@@ -123,7 +123,7 @@ concept of javascript
 - Used in module patterns
   Before ES6 modules, IIFE was a common way to create modular code.
 
----
+-------------------------------------------
 
 Jab bhi koi asynchronous method complete hota hai ( jaise fetch(), setTimeout(), async function, etc.), toh woh ek Promise return karta hai.
 
