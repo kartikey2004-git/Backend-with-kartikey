@@ -14,15 +14,23 @@ dotenv.config({
 
 connectDB()
 .then(() => {
+
   // Listen for server errors
+  // This code listens for an "error" event on the app object and handles it when it occurs
+
+  // It helps catch unhandled errors and logs them, so your server doesn’t just crash silently
+
   app.on("error", (err) => {
     console.error("Server error:", err);
   });
+
+  // app ke andar hum listen krenge jab humara server start hoga , application database ka use krte huye listen krna st krdega 
   
   app.listen(process.env.PORT || 8000,() => {
-    console.log(`Server is running at port : ${process.env.PORT}`);
+    console.log(`⚙️ Server is running at port : ${process.env.PORT}`);
   })
 })
+
 .catch((err) => {
   console.log("MONGO db connection failed !!!",err);
 })
