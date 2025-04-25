@@ -1,102 +1,91 @@
-import mongoose , {Schema} from "mongoose";
-import jwt from "jsonwebtoken"
-import bcrypt from "bcrypt"
+import mongoose, { Schema } from "mongoose";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 
 const userSchema = new Schema(
   {
-    username:{
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true, // trim is often used to remove leading and trailing whitespace from string values
+      index: true, // field ko searchable bana deta hai optimised tarike se
+    },
+    email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
-      index: true
     },
-    email:{
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    fullName:{
+    fullName: {
       type: String,
       required: true,
       trim: true,
-      index: true
+      index: true,
     },
-    avatar:{
-      type:String, // cloudinary url
+    avatar: {
+      type: String, // cloudinary url
       required: true,
     },
-    coverImage:{
-      type:String // cloudinary url
+    coverImage: {
+      type: String, // cloudinary url
     },
-    watchHistory:[
+    watchHistory: [
       {
-        type:Schema.Types.ObjectId,
-        ref:"Video"
-      }
+        type: Schema.Types.ObjectId,
+        ref: "Video",
+      },
     ],
-    password:{
+    password: {
       type: String,
-      required:[true,"Password is required"],
+      required: [true, "Password is required"],
     },
-    refreshTokens:{
-      type: String
-    }
-  },{timestamps:true}
-)
+    refreshTokens: {
+      type: String,
+    },
+  },
+  { timestamps: true }
+);
 
 userSchema.pre("save", async function (next) {
-  if(! this.isModified("password")) return next();
+  if (!this.isModified("password")) return next();
 
-  this.password = await bcrypt.hash(this.password,10)
-  next()
-})
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
 
-userSchema.methods.isPasswordCorrect = async function (password){
-  return await bcrypt.compare(password,this.password)
-}
+userSchema.methods.isPasswordCorrect = async function (password) {
+  return await bcrypt.compare(password, this.password);
+};
 
-userSchema.methods.generateAccessToken = function (){
+userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
-      _id:this._id,
-      email:this.email,
+      _id: this._id, // unique id jo mongoDB generate krta hai
+
+      email: this.email,
       username: this.username,
-      fullName: this.fullName
+      fullName: this.fullName,
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
     }
-  )
-}
-userSchema.methods.generateRefreshToken = function (){
+  );
+};
+
+userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {
-      _id:this._id,
+      _id: this._id, // unique id jo mongoDB generate krta hai
     },
-    process.env.REFRESH_TOKEN_SECRET ,
+    process.env.REFRESH_TOKEN_SECRET,
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
     }
-  )
-}
+  );
+};
 
-export const User = mongoose.model("User",userSchema)
-
-
-
-
-
-
-
-// A JSON web token(JWT) is JSON Object which is used to securely transfer information over the web(between two parties). 
- 
-// It can be used for an authentication system and can also be used for information exchange. The token is mainly composed of header, payload, signature. These three parts are separated by dots(.). 
-
-// JWT defines the structure of information we are sending from one party to the another, 
-
-// and it comes in two forms – Serialized, Deserialized. The Serialized approach is mainly used to transfer the data through the network with each request and response. While the deserialized approach is used to read and write data to the web token.
+export const User = mongoose.model("User", userSchema);
