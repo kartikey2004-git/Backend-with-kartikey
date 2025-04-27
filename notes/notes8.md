@@ -266,8 +266,76 @@ Parameters: id=123 (Query params)
 
 ---------------------------------------------------
 
+
 - user ko register krne ki koshish krenge , usse data lenge postman ke through ( name , email , photos , cover photos )
 
 - hum us ko dekhenge kis tarike se hum usko server pe lete hai / data accept krte h and usko database mein add krdenge ....
 
 
+real world problems mein logic building humari eventually achi hojati hai - obvious hai ye toh haha 😎
+
+
+( pattern printing , leetcode se bhi sikh skte hai ) - but maine nhi seekha 
+
+
+- badi problem ko subproblems mein divide krna sikhte hai jo sabse important part hai and problem ko one by one take off krte hai 
+
+( business logic building )
+
+
+
+1. Challenge 1 :: humein user ko register krna hai
+divide into sub parts 
+
+  - jo request aayi hai usme se sabse pehle saara data le lenge user ne jo bheja username , password , email id 
+    
+  - sabse pehle register krne ke liye kya krna hoga humein yeh check krna hoga kya user already database mein hai ya nhi with help of email id
+
+  -  Create a new user in the db with provided details from req.body.
+
+  - Send a success message to client.
+
+  
+Now we need to handle this jab user register hoga tab refresh token , watch history ki jarurat hi nhi hogi ...
+
+---------------------------------------------------
+
+
+Algorithmic FLow ::
+
+  - 1. get user detail from frontend  ::  get user detail from frontend sabse pehle toh , postman ke through hum data le skte hai, waha se user ka detail le lenge
+
+
+
+  - 2. validation - not empty :: validation jaise khi user ne empty toh nhi bhej diya hai username , ya phir email toh empty nhi bhej diya hai , email correct format mein hai ya nhi , and all possible validation on both frontend and backend
+
+
+  - 3. check if user already exists
+
+  - 4. email ,  username kisi se bhi check kr skte hai
+
+  - 5. check for images , check for avatar
+
+  - 6. upload then to cloudinary
+
+  - 7. response se url mil jayega :: 
+     
+     - jo bhi cloudinary pe upload kiya hai , uska reference lelo , usko console.log krke dekhlenge
+
+     - avatar bhi check krna padega ki cloudinary pe avatar upload hua hai ya nhi
+
+  - 8. create user object - create entry in DB :: kyuki mongoDB mein jab main data bhejunga toh NoSQL databases hai object banaye jaate h and upload kiye jaate hai 
+
+
+- jab user create hota hai toh uske sath humne email password diya hai toh response bhi mil jata hai
+
+
+- password mil jata lekin password encrypted hai :: but encrypted password bhi hum user ko nhi dena chahenge 
+
+  - 9. remove password and refresh token field from response 
+
+  - 10. check kro response aya hai ya nhi aaya hai 
+
+  - 11. check for user creation :: null ya actual user create hogya hai  
+
+  - 12. return response 
