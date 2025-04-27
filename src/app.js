@@ -57,7 +57,14 @@ app.use(cookieParser());
 
 
 
-// routes
+
+
+
+
+
+
+
+// routes import 
 
 import userRouter from "./routes/user.routes.js";
 
@@ -65,6 +72,21 @@ import userRouter from "./routes/user.routes.js";
 
 app.use("/api/v1/users", userRouter);
 
-// http://localhost:8000/api/v1/users/register
 
-export { app };
+// ye middleware jaise hi koi user /api/v1/users  pr ayega hum control dedenge userRouter ka control mil jayega : 
+
+
+// http://localhost:8000/api/v1/users/register
+ 
+
+export { app }
+
+
+
+// error :: routes.post requires a callback function but got an object undefined
+
+// when you called routes.post(...), the second argument (the handler function) is missing, undefined, or something that's not a function.
+
+// myHandler is undefined because the file is exporting incorrectly, you’ll get that error.
+
+
