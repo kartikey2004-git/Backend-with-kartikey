@@ -6,7 +6,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 
 
 const registerUser = asyncHandler(async (req, res) => {
-  // Get user details from frontend
+  // Get user details from frontend ( extract all data points )
+  
   const { username, email, fullName, password } = req.body;
 
   // console.log(req.body)
@@ -49,12 +50,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
 
-  const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+  // let coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
-  if (
-    req.files &&
-    Array.isArray(req.files.coverImage) &&
-    req.files.coverImage.length > 0
+
+  let coverImageLocalPath ;
+
+  if ( req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0
   ) {
     coverImageLocalPath = req.files.coverImage[0].path;
   }
