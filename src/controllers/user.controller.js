@@ -4,10 +4,9 @@ import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
-
 const registerUser = asyncHandler(async (req, res) => {
   // Get user details from frontend ( extract all data points )
-  
+
   const { username, email, fullName, password } = req.body;
 
   // console.log(req.body)
@@ -52,10 +51,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
   // let coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
+  let coverImageLocalPath;
 
-  let coverImageLocalPath ;
-
-  if ( req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
   ) {
     coverImageLocalPath = req.files.coverImage[0].path;
   }
@@ -104,4 +105,137 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "user registered sucessfully"));
 });
 
-export { registerUser }
+// We are not handling any web requests here. so NO need to asyncHandler
+
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+
+    // generate here access and refresh token by custom methods which are defined in user schema
+
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    // insert refresh token into database
+
+    user.refreshToken = refreshToken;
+
+    // user.save() is a Mongoose method that saves the current document (user) to the MongoDB database.
+
+    // The option { validateBeforeSave: false } disables Mongoose validation before saving.
+
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while generating refresh and access token"
+    );
+  }
+};
+
+const loginUser = asyncHandler(async (req, res) => {
+  // First of all to login we will need user details from postman and frontend ( req.body ) extract all data points
+
+  const { email, password, username } = req.body;
+  console.log(email);
+
+  // Then we will check if the username or email is present or not
+
+  if (!(username || email)) {
+    throw new ApiError(400, "username or email is required");
+  }
+
+  // Then we will find the user in the database by username and email
+
+  // findOne returns the first entry of a document on basis of either username or email
+
+  const user = await User.findOne({
+    $or: [{ username }, { email }],
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User does not exists");
+  }
+
+  // Then we will check whether the password given by the user matches the password of the database or not
+
+  // User mongoose ka object hai ( toh wo access kr skta hai jo mongoose ke through methods available hai like findOne )
+
+  // Jab aap database se kisi user instance ko fetch karteto , us instance pe aapke custom methods bhi available hote hain, agar wo methods model/schema ke andar define kiye gaye hain.
+
+  const isPasswordValid = user.isPasswordCorrect(password);
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "Invalid user credentials");
+  }
+
+  // Then we will generate access and refresh token
+  // DB operation time lg skta hai ( async nature of javascript )
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    user._id
+  );
+
+  // send it to the user in cookies
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User loggedIn successfully"
+      )
+    );
+});
+
+const logoutUser = asyncHandler(async (req, res) => {
+  // Logout ka matlab hai
+
+  //  Client side ko bhi tokens hataane ko bolo ( refresh token jo hai user model mein wo bhi clear hona chahiye and  reset krna padega )
+
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  // Session tokens ( cookies se ) invalidate karo (cookies + DB se refreshToken hatao)
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User logged out successfully"));
+});
+
+export { registerUser, loginUser, logoutUser };
