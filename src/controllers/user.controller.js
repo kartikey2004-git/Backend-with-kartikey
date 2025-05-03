@@ -3,6 +3,7 @@ import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken"
 
 const registerUser = asyncHandler(async (req, res) => {
   // Get user details from frontend ( extract all data points )
@@ -135,6 +136,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
   }
 };
 
+
 const loginUser = asyncHandler(async (req, res) => {
   // First of all to login we will need user details from postman and frontend ( req.body ) extract all data points
 
@@ -238,4 +240,66 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 
-export { registerUser, loginUser, logoutUser };
+const refreshAccessToken = asyncHandler(async (req, res) => { 
+  
+  // ab humein sochna hai AccessToken ko refresh kaise krwa payenge 
+
+  // refresh token bhejna padega ( cookies se access kr skte hai )
+
+  const incomingRefreshtoken = req.cookies.refreshToken || req.body.refreshToken;
+
+  if (!incomingRefreshtoken) {
+    throw new ApiError(401, "unauthorized request");
+  }
+
+  // decoded token mil jayega , wrna user ke pass jo token gaya and jo database mein save hai wo alag alag hai kyuki user ke pass encrypted token jaata hai
+
+  // It is not necessary that the decoded token contains a payload (data), it may or may not
+
+  try {
+    const decodedToken  = jwt.verify(
+      incomingRefreshtoken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+  
+    const user = await User.findById(decodedToken?._id)
+    
+    if (!user) {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+  
+    // Now we have received tokens in two ways, one is our incoming refresh token or decoded token and the refresh token which was generated and encoded, we saved it in user's mongoDB (database)
+  
+    if (incomingRefreshtoken != user?.refreshToken) {
+      throw new ApiError(401, "Refresh token is expired or used");
+    }
+  
+    // agar dono refresh tokens match kr jaate hai toh hum naye access and refresh token generate krayenge  
+  
+    const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
+  
+    
+    const options = {
+      httpOnly: true,
+      secure: true,
+    }
+  
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", newRefreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { accessToken, refreshToken: newRefreshToken },
+        "Access token refreshed"
+      )
+    )
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid refresh token");
+  }
+})
+
+
+
+export { registerUser, loginUser, logoutUser , refreshAccessToken };
