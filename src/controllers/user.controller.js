@@ -3,7 +3,7 @@ import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
 
 const registerUser = asyncHandler(async (req, res) => {
   // Get user details from frontend ( extract all data points )
@@ -47,6 +47,8 @@ const registerUser = asyncHandler(async (req, res) => {
   //  console.log(req.files);
 
   // check for coverimages,check for avatar
+
+  // multiple option de rhe the user ko file upload krane ka kyuki routes mein array le rhe the avatar and coverImage
 
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
 
@@ -135,7 +137,6 @@ const generateAccessAndRefreshTokens = async (userId) => {
     );
   }
 };
-
 
 const loginUser = asyncHandler(async (req, res) => {
   // First of all to login we will need user details from postman and frontend ( req.body ) extract all data points
@@ -240,13 +241,13 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 
-const refreshAccessToken = asyncHandler(async (req, res) => { 
-  
-  // ab humein sochna hai AccessToken ko refresh kaise krwa payenge 
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  // ab humein sochna hai AccessToken ko refresh kaise krwa payenge
 
   // refresh token bhejna padega ( cookies se access kr skte hai )
 
-  const incomingRefreshtoken = req.cookies.refreshToken || req.body.refreshToken;
+  const incomingRefreshtoken =
+    req.cookies.refreshToken || req.body.refreshToken;
 
   if (!incomingRefreshtoken) {
     throw new ApiError(401, "unauthorized request");
@@ -257,49 +258,204 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   // It is not necessary that the decoded token contains a payload (data), it may or may not
 
   try {
-    const decodedToken  = jwt.verify(
+    const decodedToken = jwt.verify(
       incomingRefreshtoken,
       process.env.REFRESH_TOKEN_SECRET
     );
-  
-    const user = await User.findById(decodedToken?._id)
-    
+
+    const user = await User.findById(decodedToken?._id);
+
     if (!user) {
       throw new ApiError(401, "Invalid refresh token");
     }
-  
+
     // Now we have received tokens in two ways, one is our incoming refresh token or decoded token and the refresh token which was generated and encoded, we saved it in user's mongoDB (database)
-  
+
     if (incomingRefreshtoken != user?.refreshToken) {
       throw new ApiError(401, "Refresh token is expired or used");
     }
-  
-    // agar dono refresh tokens match kr jaate hai toh hum naye access and refresh token generate krayenge  
-  
-    const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
-  
-    
+
+    // agar dono refresh tokens match kr jaate hai toh hum naye access and refresh token generate krayenge
+
+    const { accessToken, newRefreshToken } =
+      await generateAccessAndRefreshTokens(user._id);
+
     const options = {
       httpOnly: true,
       secure: true,
-    }
-  
+    };
+
     return res
-    .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", newRefreshToken, options)
-    .json(
-      new ApiResponse(
-        200,
-        { accessToken, refreshToken: newRefreshToken },
-        "Access token refreshed"
-      )
-    )
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access token refreshed"
+        )
+      );
   } catch (error) {
     throw new ApiError(401, error?.message || "Invalid refresh token");
   }
-})
+});
 
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  // simply se user se current password change krwana hai
 
+  const { oldPassword, newPassword } = req.body;
 
-export { registerUser, loginUser, logoutUser , refreshAccessToken };
+  // After verifyJWT req.user me authenticated user ka data aa chuka hai
+
+  // Us user.id ke basis pe hum database me user ko access kar ke password update kar sakte hain
+
+  const user = await User.findById(req.user?._id);
+
+  // mongoDb ka user model hai iske pass custom methods ka access hota hai
+
+  const isOldPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!isOldPasswordCorrect) {
+    throw new ApiError(400, "Invalid old Password");
+  }
+
+  // set new password now
+
+  user.password = newPassword;
+
+  // save the user with new password
+
+  user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed Sucessfully"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  // humhara auth middleware JWT ya session ko verify karta ha
+
+  // and Uske baad humne current user ( loggedIn user ) information ko req.user me store kar diya hai (jaise id, email, role, etc.)
+
+  return res
+    .status(200)
+    .json(200, req.user, "Current user fetched sucessfully");
+});
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body;
+
+  if (!fullName?.trim() || !email?.trim()) {
+    throw new ApiError(400, "All fields are required");
+  }
+
+  // trim() lagane se agar koi user spaces dal ke bheje (e.g., " "), wo bhi invalid mana jayega.
+
+  // sabse pehle current user find krna padega
+
+  // new : true krne se update hone ke baad jo information hai woh humein return hoti hai
+
+  // set recieve krta hai ek object , uss object mein hum parameter dete hai
+
+  // select :: Specifies which document fields to include or exclude (also known as the query "projection")
+
+  // Another Approach :: hum yaha pe ek extra db call bacha liye jisme user._id se call krte DB ko and phir usme se password hata dete toh ek DB call bach gyi
+
+  const updatedUser = User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        fullName: fullName,
+        email: email,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatedUser, "Account details updated sucessfully")
+    );
+});
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  // sabse pehle humein multer middleware se req.files and ab humara cloudinary wagerah use krne ka mann nhi hai , toh hum isi situation mein database mein ise save kra skte hai
+
+  const avatarLocalPath = req.file?.path;
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is missing");
+  }
+
+  const updatedAvatar = await uploadOnCloudinary(avatarLocalPath);
+
+  if (!updatedAvatar.url) {
+    throw new ApiError(400, "Error while uploading avatar on cloudinary");
+  }
+
+  // ab humein update krna hai ekhi field avatar jyada field update nhi krne hai , jyada kuch thodi hai object ke andar value hi toh update ho rhi hai and updated profile dikhni chahiye user ko
+
+  // patch hi toh route krenge yaha kyuki saari ki saari value thodi update krni hai
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        avatar: updatedAvatar.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Avatar updated Sucessfully"));
+});
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  // sabse pehle humein multer middleware se req.files and ab humara cloudinary wagerah use krne ka mann nhi hai , toh hum isi situation mein database mein ise save kra skte hai
+
+  const coverImageLocalPath = req.file?.path;
+
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, "CoverImage file is missing");
+  }
+
+  const updatedCoverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+  if (!updatedCoverImage.url) {
+    throw new ApiError(400, "Error while uploading Cover Image on cloudinary");
+  }
+
+  // ab humein update krna hai ekhi field avatar jyada field update nhi krne hai , jyada kuch thodi hai object ke andar value hi toh update ho rhi hai and updated profile dikhni chahiye user ko
+
+  // patch hi toh route krenge yaha kyuki saari ki saari value thodi update krni hai
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        coverImage: updatedCoverImage.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Cover Image updated Sucessfully"));
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
+};
