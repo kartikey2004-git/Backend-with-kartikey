@@ -83,6 +83,7 @@ const registerUser = asyncHandler(async (req, res) => {
   const user = await User.create({
     fullName,
     avatar: avatar.url,
+    avatar_public_id: avatar.public_id,
     coverImage: coverImage?.url || "",
     email,
     password,
@@ -389,29 +390,64 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is missing");
   }
 
+  // To-Do delete old messages ( create a utility function ) - assignment ,
+
+  // jab humne avatar ko change krdiya hai , matlab humne new avatart image ko cloudinary pe upload krke url leke DB calls se user mein new avatar set krdiya hai
+
+  const user = await User.findById(req.user?._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (user?.avatar_public_id) {
+    await deleteFromCloudinary(user.avatar_public_id);
+  }
+
   const updatedAvatar = await uploadOnCloudinary(avatarLocalPath);
 
   if (!updatedAvatar.url) {
     throw new ApiError(400, "Error while uploading avatar on cloudinary");
   }
 
-  // ab humein update krna hai ekhi field avatar jyada field update nhi krne hai , jyada kuch thodi hai object ke andar value hi toh update ho rhi hai and updated profile dikhni chahiye user ko
+  // Another Approach ab humein update krna hai ekhi field avatar jyada field update nhi krne hai , jyada kuch thodi hai object ke andar value hi toh update ho rhi hai and updated profile dikhni chahiye user ko
 
   // patch hi toh route krenge yaha kyuki saari ki saari value thodi update krni hai
+
+  /* 
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
         avatar: updatedAvatar.url,
+        avatar_public_id: updatedAvatar.public_id,
       },
     },
     { new: true }
-  ).select("-password");
+  ).select("-password")
+
+  */
+
+  //  Update user with new avatar URL & public_id
+
+  user.avatar = updatedAvatar.url;
+  user.avatar_public_id = updatedAvatar.public_id;
+
+  await user.save();
+
+  // Remove password before sending response
+
+  const userObject = user.toObject();
+
+  // Mongoose Document ko normal JS Object me convert
+
+  delete userObject.password;
+  // Password field hata diya
 
   return res
     .status(200)
-    .json(new ApiResponse(200, user, "Avatar updated Sucessfully"));
+    .json(new ApiResponse(200, userObject, "Avatar updated Sucessfully"));
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
