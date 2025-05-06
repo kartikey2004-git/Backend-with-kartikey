@@ -20,4 +20,4 @@ const deleteFromCloudinary = async( public_id ) => {
   }
 }
 
-export default deleteFromCloudinary;
+export { deleteFromCloudinary }

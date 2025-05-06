@@ -306,7 +306,6 @@ From Now :: Yes we can write more controllers and endpoints depending on what ot
 
 - Flow in updating Avatar 
   
-
   - 1. Multer se Image Input
      
      - Client se multipart/form-data ke through image file aayegi.
@@ -324,49 +323,40 @@ From Now :: Yes we can write more controllers and endpoints depending on what ot
 
   - 3. JWT Verify Middleware Se Current User     Pakadna
 
-     - Tumhare JWT middleware me tum req.user = { id, email, ... } set karte ho.
+     - Tumhare JWT middleware me tum req.user = { id, email, ... } ek naya object set karte hai jo ki loggedIn user hota hai .
 
      - So ab req.user.id se db call karke current user ka record modify kar sakte ho.
 
-  - 4. Database Me New Avatar URL Set Karna
-
-     - User ka record (by ID) update karoge aur new avatar URL dal doge.
-
-     - Example: User.findByIdAndUpdate(req.user.id, { avatar: newUrl })
-
-  - 5. Delete Previous Image From Cloudinary
+   - 4. Delete Previous Image From Cloudinary
 
      - Purana public_id DB me store karte ho na (avatar_public_id)
 
      - Cloudinary ke destroy() function se use delete kar doge.
 
 
+  - 5. Database Me New Avatar URL Set Karna
 
-Yaha tu future me ye karne wala hai:
+     - User ka record (by ID) update karoge aur new avatar URL dal doge.
 
-   - Purana avatar jo Cloudinary pe pada hai, usse delete karne ke liye ek utility function banayega.
-
-   - Ye best practice hai — warna user ke old avatars Cloudinary pe unnecessary space lete rahenge (and storage ka bill badhega ).
-
---------------------------------------------------
+     - Example: User.findByIdAndUpdate(req.user.id, { avatar: newUrl })
 
 
-- Abhi ]main sirf avatar URL save kar raha hai DB me. Lekin:
+   - 6. Abhi main sirf avatar URL save kar raha hai DB me. Lekin
 
     - Jab user naya avatar upload karega, to purana image Cloudinary pe padh rahega — space lega.
 
     - Cloudinary pe image delete karne ke liye URL nahi chalta, balki public_id chalta hai.
 
 
+  7. Add-on 
 
-    - Tu new image upload karke DB update kar raha hai, uske baad old avatar delete kar raha hai.
+   - Purana avatar jo Cloudinary pe pada hai, usse delete karne ke liye ek utility function banana padega .
 
-    - But ideally pehle purana avatar delete hona chahiye, then new upload & update.
+   - Ye best practice hai — warna user ke old avatars Cloudinary pe unnecessary space lete rahenge (and storage ka bill badhega ).
 
-    - Abhi tera code me old image delete hone se pehle naya URL set ho chuka hoga DB me → jo galat hai.
- 
---------------------------------------------------
 
+
+------------------------------------------------------
 
 User Avatar Update ka Pura Approach
   
@@ -393,7 +383,7 @@ User Avatar Update ka Pura Approach
 
 4. Naya Avatar Upload Karte Hain Cloudinary Pe
  
-    - Jo user ne abhi file bheji hai (avatarLocalPath) — usko Cloudinary pe upload karte hain
+    - Jo user ne abhi file bheji hai (avatarLocalPath) — usko Cloudinary pe upload karte hain utility function se
 
     - Isse hume url (image link) aur public_id (Cloudinary ka unique id) dono milte hain.
 
@@ -407,13 +397,14 @@ User Avatar Update ka Pura Approach
 6.  Response Me Updated User Data Send Karte Hain
 Hum updated user ko return karte hain password field ko hata kar
 
-
-Tujhe user object ka response dena hai password field hata ke — aur tune JWT verify me user object already attach kar rakha hai (jaise req.user).
-
+   - Tujhe user object ka response dena hai password field hata ke — aur tune JWT verify me user object already attach kar rakha hai (jaise req.user).
 
 
 
+Another approach we try :::  
 
-
-
-
+- At the time of image upload 
+    
+    - sabse pehle humein multer middleware se req.files 
+    
+    - ab humara cloudinary wagerah use krne ka mann nhi hai , toh hum isi situation mein database mein ise save kra skte hai

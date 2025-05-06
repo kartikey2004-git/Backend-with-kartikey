@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteFromCloudinary } from "../utils/deleteFromCloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
@@ -382,17 +383,13 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 });
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
-  // sabse pehle humein multer middleware se req.files and ab humara cloudinary wagerah use krne ka mann nhi hai , toh hum isi situation mein database mein ise save kra skte hai
-
   const avatarLocalPath = req.file?.path;
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is missing");
   }
 
-  // To-Do delete old messages ( create a utility function ) - assignment ,
-
-  // jab humne avatar ko change krdiya hai , matlab humne new avatart image ko cloudinary pe upload krke url leke DB calls se user mein new avatar set krdiya hai
+  // jab humne avatar ko change krdiya hai , matlab humne new avatar image ko cloudinary pe upload krke url leke DB calls se user mein new avatar set krna hai
 
   const user = await User.findById(req.user?._id);
 
@@ -410,9 +407,9 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Error while uploading avatar on cloudinary");
   }
 
-  // Another Approach ab humein update krna hai ekhi field avatar jyada field update nhi krne hai , jyada kuch thodi hai object ke andar value hi toh update ho rhi hai and updated profile dikhni chahiye user ko
+  // Patch hi toh route krenge yaha kyuki saari ki saari value thodi update krni hai
 
-  // patch hi toh route krenge yaha kyuki saari ki saari value thodi update krni hai
+  // Another Approach ab humein update krna hai takhi field avatar jyada field update nhi krne hai , jyada kuch thodi hai object ke andar value hi toh update ho rhi hai and updated profile dikhni chahiye user ko
 
   /* 
 
@@ -439,7 +436,6 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   // Remove password before sending response
 
   const userObject = user.toObject();
-
   // Mongoose Document ko normal JS Object me convert
 
   delete userObject.password;
@@ -484,6 +480,129 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Cover Image updated Sucessfully"));
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  // check krenge username exists krta bhi ya nhi , ho skta hai params empty ho , kuch username hona chahiye uske basis pe query krenge na
+
+  if (!username?.trim()) {
+    throw new ApiError(400, "username is missing");
+  }
+
+  // ab main ye soch rha hu ki sabse pehle toh user find krlenge iss username ka DB query krke document find krlete hai and phir id ke basis pe aggregation lagayenge
+
+  // hum direct hi aggregation pipeline laga skte hai , kyuki waha pr match field hota hai toh wo automatially saare documents mein sirf ek document find krlega
+
+  // Array ke andar further objects/pipelines/stages likhi jaati hai
+
+  // An array of aggregation pipelines to execute
+
+  // Database lekin another continent mein hota hai toh time lagega
+
+  // jo value return mein aati hai aggregation pipeline likhne ke baad wo arrays aate hai ,  aage we further discuss iske baare mein
+
+  const channel = await User.aggregate([
+    {
+      $match: {
+        username: username?.toLowerCase(),
+      },
+      // ab humare pass ek document hai iss ke basis pe lookup krna hai
+
+      // ab humein chai code ke subscribers kitne hai woh find krna hai
+    },
+
+    {
+      $lookup: {
+        from: "subscription",
+        localField: "_id",
+        foreignField: "channel",
+
+        // isse kya jo given username hai chai aur code uske mein woh saare subscriptions document aajayenge jinme channel chai aur code hoga ( subscribers mil jayenge )
+
+        // count bhi krenge inhe abhi
+
+        as: "subscribers",
+      },
+
+      // iss pipeline mein humne saare documents ko ek jagah krke rkh liya hai
+    },
+
+    // ab chai aur code ne kitne channels ko subscribe kr rkha hai wo bhi toh nikalna hai
+
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+
+        // saare subscriptions document mein jinme subscriber ki field mein jo given username h agar wo chai aur code likha hoga  woh saare aajayenge
+
+        as: "subscribedTo",
+      },
+
+      // ab humare pass dono fields aa chuke hai , dono alag alag hai , ab dono  fields ko add krdenge with existing information ke sath
+    },
+    {
+      $addFields: {
+        subscribersCount: {
+          $size: "$subscribers",
+        },
+        channelSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+
+        // hum kya krenge frontend wale ko true ya false message bhej denge or uske basis wo calculate krlega ki user subscribed hai ya nhi hai jis channel pr wo gya hai
+
+        isSubscribed: {
+          // humein ye dekhna hai basically , ki humare pass jo documents aaya hai subscribers usme current user hai ya nhi
+
+          $condition: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+
+            // check krega req.user(current user ya loggedIn user ki _id ,  subscribers field mein subscriber object mein hai ya nhi )
+
+            // in :: arrays and objects dono mein dekh leta hai
+          },
+        },
+      },
+    },
+    {
+      // project :: humein projection deta hai ki main saari values ko project nhi krunga waha pe jo bhi usko demand kr rha hai , main selected  cheezein dunga
+
+      $project: {
+        fullName: 1, // as flag
+        username: 1,
+        subscribersCount: 1,
+        channelSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar: 1,
+        coverImage: 1,
+        email: 1,
+      },
+    },
+  ]);
+
+  console.log(channel);
+
+  // kayi baar aise cheezein bhi aayengi ki value humein pata nhi hogi ki kya aa rhi hai .. what does datatype aggregate returns
+
+  // output humein array milta hai jiske andar humari values hai , lekin humare pass toh match se sirf ek hi user mila hai but ho skta hai multiple values bhi mil skti hai
+
+  // jitni bhi aggregation pipelines hai wo mostly array hi return krti hai
+
+  if (!channel?.length) {
+    throw new ApiError(404, "channel does not exist");
+  }
+
+  // we can return array also but difficulties in frontend phir
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, channel[0], "User channel fetched sucessfully"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -494,4 +613,5 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
 };
