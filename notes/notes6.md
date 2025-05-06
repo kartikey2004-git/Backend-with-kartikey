@@ -20,7 +20,7 @@ sabse pehle multer import kra lete h , then uske baad konsi destination woh usko
 
 For more detailed study 
 
-https://github.com/expressjs/multer?tab=readme-ov-file
+- [MulterDocs Link](https://tiny-ur-lz.vercel.app/multerDocs)
 
 
 frontend pe aise krna hai

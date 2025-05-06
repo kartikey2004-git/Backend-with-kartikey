@@ -1,7 +1,7 @@
 refresh token , access token 
 modern practice application like gmail uses both
 
-difference in expiry dates ::b
+difference in expiry dates ::
 
   - access token usually short lived hote hai 
   ( short duration mein expire krdiya jaata hai )
@@ -306,3 +306,4 @@ login ka verification hoga auth middlware mein jwt token verify krne se
 
 - better hai ki findbyIdAndUpdate krle
 
+ 

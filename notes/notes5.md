@@ -1,5 +1,5 @@
 intersting :: A cron job is a scheduled task that runs automatically at predefined intervals on Unix-like operating systems
-
+ 
 
 How to write controllers , routes , database se query kaise krenge 
 

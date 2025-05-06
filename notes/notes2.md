@@ -68,7 +68,7 @@ testing ke liye temporarily IP allow krdete h
 
 - stackoverflow ref : ki agar humare db ki password mein special characters hote hai toh issues aajate h
 
----
+------------------------------------------------
 
 Database connection do major tarike se ho skta h :
 do approach

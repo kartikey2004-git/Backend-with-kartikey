@@ -1,4 +1,4 @@
-- [sample modelling link](https://excalidraw.com/#json=e-56b987U8R3zj1aQH74a,BHRNvITEmCULzvqihvy7iQ)
+- [Sample Model link ](https://tiny-ur-lz.vercel.app/modelLink)
 
 
 - Mongoose is an ODM (Object Data Modeling) library for MongoDB and Node.js. It gives structure to your data and helps you interact with MongoDB using JavaScript. 

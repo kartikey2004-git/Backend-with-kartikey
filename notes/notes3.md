@@ -25,7 +25,7 @@ in earlier express package uses body parser to accept json
 multer : file uploading configure krte h
 
 
---------------------------------------------------
+------------------------------------------------
 
 
 Middleware :: It sits between the request (from user) and response (from server) and does something useful — like checking if the user is logged in, logging info, modifying the request, etc.

@@ -36,30 +36,39 @@ Channel profile mein hai kya kya hai :
    hum user ko response mein bhej skte hai 
 
 
-Two problems :::
+Two problems ::: 
 
-   - lekin humare pass do cheezein nhi hai ki user ne kitne channel ko subscribe kr rkha hai 
+user --->  let's say for now HiteshChaudhary 
+
+   - lekin humare pass do cheezein nhi hai 
    
-   - kitne logo ne uss channel ko subscribe kr rkha hai
+      - ki us user ( HiteshChaudhary ) ne kitne channel ko subscribe kr rkha hai :: subscribedTo ka count
 
-   - jab bhi hum kisi ke page pr aate hai toh humein button dikhta subscribed ki us channel ko humne subscribe kr rkha hai ya nhi
-
-
-- In the database model, consider the user we have taken
+     
+      - kitne logo ne us user ( HiteshChaudhary ) channel ko subscribe kr rkha hai :: No of subscribers ka count
 
 
-- Here we have created a different model with the subscription name
+   - jab bhi hum kisi ke channel ( HiteshChaudhary ) ke page pr aate hai toh humein button dikhta subscribed ki 
+   
+   - us channel ko humne subscribe kr rkha hai ya nhi ?
+   
+----------------------------------------------------
 
 
-- In this case, in the user model, we can create an array with the subscriber name and push all the ids inside it, 
-
-- but the channel has millions of subscribers (very large data), so if we had to make some changes, it would be an issue
+- In the database model, consider the user we have taken and Here we have created a different model with the subscription name
 
 
-- If the first user unsubscribes, the entire data structure has to be re-arranged, which would be a very expensive operation
+- In this case, in the user model, we can create an array with the subscribers name and push all the ids inside it, 
 
+
+- but the channel has millions of subscribers (very large data), so if we had to make some changes, it would be an issue in processing
+
+
+- If the first user unsubscribes, the entire data structure has to be re-arranged, which would be a very expensive operation from a data structure perspective...
+
+----------------------------------------------------
         
-- Now the point is that to count the subscribers in the channel profile, we have designed a structure/model in the database for the subscribers who take the subscription, which has two fields.
+- Now the point is that to count the subscribers in the channel profile, we have designed a structure/model in the database  who take the subscriptions, which has two fields.
    
    - subscriber 
    - channel
@@ -69,24 +78,23 @@ Two problems :::
 
 - when we retrieve data from this model (basically perform a join operation), then how will we get the data from it,
 
-   
    - Let's first understand what this data is right now
    - How to bring the data
 
-----------------------------------------------
+------------------------------------------------
 
-Schema mein do cheezein hai subscriber and channel , hai toh dono user hi , 
+Schema mein do cheezein hai subscriber and channel , hai toh dono user hi hai
 
 
 
-- jaise koi youtube channel hai woh bhi user hi hai and humare jo account hai wo bhi channel hi hai but hum waha pr videos nhi dalte hai internally dekha jaaye toh wo user bhi hai 
+- jaise koi youtube channel ( HiteshChaudhary ) hai woh bhi user hi hai and humare jo account hai wo bhi channel hi hai but hum waha pr videos nhi dalte hai internally dekha jaaye toh wo user bhi hai 
+
 
 
 - subscriber aur channel dono entities actually user hi hai, bas unka role ya context alag hai.
 
 
 - Toh schema mein subscriber - bhi ek user hi hai and channel jiska hai wo bhi user hi hai
-
 
  
     - User: Ye base entity hai, jisme common details hongi jaise userId, name, email, profilePic, etc.
@@ -102,7 +110,7 @@ Schema mein do cheezein hai subscriber and channel , hai toh dono user hi ,
    - Subscriber: Ye ek relationship hai — jo bataata hai ki ek user (subscriber) dusre user (channel) ko follow kar raha hai.
 
 
-subscriberId aur channelId dono userId hi hai, bas ek subscriber ke role me hai aur ek channel ke role me.
+- subscriberId aur channelId dono userId hi hai, bas ek subscriber ke role me hai aur ek channel ke role me.
 
 
 
@@ -113,18 +121,18 @@ subscriberId aur channelId dono userId hi hai, bas ek subscriber ke role me hai 
 -----------------------------------------------
 
 
-ab humne do fields hi kyu rkha subscriber channel array kyu nhi in subscription schema and array nhi toh yeh schema kaam kaise krega 
+- ab humne do fields hi kyu rkha subscriber channel array kyu nhi in subscription schema and array nhi toh yeh schema kaam kaise krega 
 
 
-jab hum lookup , aggregation pipeline kya hote hai and kaise use krenge 
-
-excalidrawwwwwwwwwwwwwww ki mc h
+What is Lookup, Aggregation Pipeline and how to use it , we will discuss about them further
 
 
-  subscription model samjh liya ::
+- [Link to Excalidraw for understanding Schema](https://tiny-ur-lz.vercel.app/Excalidraw2)
+
 
 
 -----------------------------------------------
+
 
 - MongoDB aggregation pipelines ::  Series on Aggregation pipelines on hitesh chaudhary pe available if gain more knowledge then hum padh skte hain
 
@@ -135,14 +143,15 @@ excalidrawwwwwwwwwwwwwww ki mc h
 
 - Aggregation pipeline kuch nhi stages hoti hai ek stage -->  dusri stage --> teesri stage 
  
-  - each stage performs an operation n the input documents 
+    - each stage performs an operation on the input documents 
+  
+    - documents that are output from a stage are passed to the next stage 
+
   
   - for example :  jaise maan lijiye jaise hmne ek stage pe filtering laga di ki humein 100 mein se 50 hi document select krke do kisi bhi condition ke basis pe 
   
   - toh next stage ke liye 50 document hi original dataset hai , 50 document pe hi applicable hoga jo hum process krenge ab 
 
-
-  - documents that are output from a stage are passed to the next stage 
 
 
 
@@ -179,11 +188,12 @@ books
    - genre : "Classic"
 
 authors
+   - _id : 100
    - name: "Kartik"
    - birth_year: 2004
    
 
-- kisi dusre document author ka _id ( jaise mongoDB mein user ka bhi _id hoga jab naya document banega  )
+- kisi dusre document author ka _id ( jaise mongoDB mein user document ka bhi _id hoga jab naya document banega  )
 
 
 - toh ye dusre document mein match krna chahiye and humara dusra document hai authors
@@ -193,7 +203,7 @@ and  same _id match hogya hai
 - toh dono ko join kraya jaa skta hai and then join krate hi hai jaha jaha pr author_id : 100 hoga waha waha pr document ki puri information aajayegi
 
 
-   :::: Ab join kaise kiya jaaye ( books ke andar ):::
+   :::: Ab join kaise kiya jaaye ( books ke andar ) :::
 
    - toh humare pass mongoDB atlas ( mongoDB client me like studio3t ) mein aggregation likhne ka tarika hai
 
@@ -232,21 +242,20 @@ and  same _id match hogya hai
 - localField: "author_id" ::: is naam se humne books document mein rkh rkha hai , author ka id
 
 
-- foreignField: _id  ::: The field in the from collection that can be used as a unique identifier in the primary collection.
+- foreignField: _id of author in authors table  ::: The field in the from collection that can be used as a unique identifier in the primary collection. 
 
 
 
 - as : "author_details" ::: result Array ka name 
 
 
-- ab isse hua kya ki humare pass aaya hai author_details naam ka array aaya hai books document mein jiske andar object aaya hai jisme bhi author_id: 100 ( jis author ki _id 100 hai )
-uska saara data aagya hai
+- ab isse hua kya ki humare pass aaya hai author_details naam ka array add on hogya hai books document mein ( jiske andar object aaya hai ) jisme bhi author_id: 100 ( jis author ki _id : 100 hai ) uska saara data aagya hai
 
 
 
 ab jo new document hai wo kuch aisa banega 
 
-   author_details: Array() jiske andar object hai and information ha author ki and baaki information toh hai document Books ki
+   author_details: Array() jiske andar object hai and object ke andar information ha author ki and baaki information toh hai document Books ki
 
 
 - Document Structure :::
@@ -280,7 +289,7 @@ Note :: we have strong command on concepts Data structures ki return value konse
 
 - lekin humein lgta hai ki main inn details ko array mein nhi rkhna chahta hu , 
 
-- toh pure lookup hai uske value ko variable mein store krado ( and humein return milta hai Array (author_details ) lookup ke baad )
+- toh pure lookup hai uske value ko variable mein store krado ( and humein return milta hai Array ( author_details ) lookup ke baad )
 
 - then Array ka first index 0 return krdenge 
 
@@ -298,7 +307,7 @@ but hum second pipelines bhi likh skte hai
             foreignField: _id , 
             as : "test" 
          }
-      }, // returns array jiske first index par information hai author ki
+      }, // returns array jiske first index par object hai jisme information hai author ki
       {
          $addFields : {
             // perform another operation
@@ -336,6 +345,7 @@ but hum second pipelines bhi likh skte hai
 
 ----------------------------------------------
 
+
 ab humein jo user h usme se kaafi saari details chahiye avatar image , cover image , username , full name , email
 
    - updatedAt ,createdAt, refresh token , password nhi chahiye 
@@ -356,12 +366,13 @@ ab humein jo user h usme se kaafi saari details chahiye avatar image , cover ima
 
 - hum ye bhi calculation krenge ki loggedIn user ne kisi bhi channel jispr wo gya hai usko subscribe kr rkha hai ya nhi , wrna option aata hai ki subscribe krlo....
 
-
+------------------------------------------------
  
 
 - Jab bhi hum kisi channel ki profile humein to usually kya krte hai , toh hum uss channel ke URL pe jaate hai 
 
 - req.params ::  This property is an object containing properties mapped to the named route “parameters”.
+
 
 for example:: 
 
@@ -386,3 +397,4 @@ console.dir(req.params.name)
     - Reshapes documents by including or excluding fields, adding computed fields, or changing the structure.
 
     - Use: Modify the output format of the documents (e.g., changing field names, creating new computed fields).
+
