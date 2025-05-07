@@ -309,11 +309,21 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   const { oldPassword, newPassword } = req.body;
 
+  // console.log(req.body)
+
+  if (!oldPassword || !newPassword) {
+    throw new ApiError(400, "Both old and new passwords are required");
+  }
+
   // After verifyJWT req.user me authenticated user ka data aa chuka hai
 
   // Us user.id ke basis pe hum database me user ko access kar ke password update kar sakte hain
 
-  const user = await User.findById(req.user?._id);
+  const user = await User.findById(req.user?._id)
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
 
   // mongoDb ka user model hai iske pass custom methods ka access hota hai
 
@@ -341,9 +351,11 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
   // and Uske baad humne current user ( loggedIn user ) information ko req.user me store kar diya hai (jaise id, email, role, etc.)
 
+  // fixing bug here there is change in sending API response 
+
   return res
     .status(200)
-    .json(200, req.user, "Current user fetched sucessfully");
+    .json(new ApiResponse(200,req.user,"User fetched sucessfully"));
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -365,7 +377,9 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
   // Another Approach :: hum yaha pe ek extra db call bacha liye jisme user._id se call krte DB ko and phir usme se password hata dete toh ek DB call bach gyi
 
-  const updatedUser = User.findByIdAndUpdate(
+  // yaha pe error aa gyi thi kyuki database another continent mein hota hai
+
+  const updatedUser = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -379,7 +393,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, updatedUser, "Account details updated sucessfully")
+      new ApiResponse(200, updatedUser, "Account details updated successfully")
     );
 });
 
@@ -484,11 +498,15 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 const getUserChannelProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
 
+  // debugging mein ye pata chala ki jo variable username hai wo ek route banana hai waise jisme channel constant ho and username variable rhe
+
   // check krenge username exists krta bhi ya nhi , ho skta hai params empty ho , kuch username hona chahiye uske basis pe query krenge na
 
   if (!username?.trim()) {
     throw new ApiError(400, "username is missing");
   }
+
+  console.log(username)
 
   // ab main ye soch rha hu ki sabse pehle toh user find krlenge iss username ka DB query krke document find krlete hai and phir id ke basis pe aggregation lagayenge
 
@@ -561,7 +579,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         isSubscribed: {
           // humein ye dekhna hai basically , ki humare pass jo documents aaya hai subscribers usme current user hai ya nhi
 
-          $condition: {
+          // fix cond instead of conditon 
+          $cond: {
             if: { $in: [req.user?._id, "$subscribers.subscriber"] },
             then: true,
             else: false,
