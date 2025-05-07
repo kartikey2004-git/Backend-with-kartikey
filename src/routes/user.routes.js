@@ -50,7 +50,7 @@ router
   .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
 router
-  .route("cover-image")
+  .route("/cover-image")
   .patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
 
 // frontend wale ka role hai ki hum usko kya bol rhe hai and usko usi naam se bhejni padegi and hum or checks bhi laga skte hai
