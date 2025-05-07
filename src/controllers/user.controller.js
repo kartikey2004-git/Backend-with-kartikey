@@ -5,6 +5,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { deleteFromCloudinary } from "../utils/deleteFromCloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const registerUser = asyncHandler(async (req, res) => {
   // Get user details from frontend ( extract all data points )
@@ -513,7 +514,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
     {
       $lookup: {
-        from: "subscription",
+        from: "subscriptions",
         localField: "_id",
         foreignField: "channel",
 
@@ -546,9 +547,13 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       $addFields: {
         subscribersCount: {
           $size: "$subscribers",
+
+          // for example : count the number of documents of subscribers field which is array of document which have channel : chai aur code
         },
         channelSubscribedToCount: {
           $size: "$subscribedTo",
+
+          // count the number of documents of ssubscribedTo field which is array of document which have subscriber : User C ( current user )
         },
 
         // hum kya krenge frontend wale ko true ya false message bhej denge or uske basis wo calculate krlega ki user subscribed hai ya nhi hai jis channel pr wo gya hai
@@ -571,8 +576,10 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     {
       // project :: humein projection deta hai ki main saari values ko project nhi krunga waha pe jo bhi usko demand kr rha hai , main selected  cheezein dunga
 
+      // kyuki unnecessary network traffic badh jayega , increase the size of data
+
       $project: {
-        fullName: 1, // as flag
+        fullName: 1, // as flag on krdiya hai
         username: 1,
         subscribersCount: 1,
         channelSubscribedToCount: 1,
@@ -588,7 +595,9 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
   // kayi baar aise cheezein bhi aayengi ki value humein pata nhi hogi ki kya aa rhi hai .. what does datatype aggregate returns
 
-  // output humein array milta hai jiske andar humari values hai , lekin humare pass toh match se sirf ek hi user mila hai but ho skta hai multiple values bhi mil skti hai
+  // output humein array milta hai jiske andar objects aate hai humari values mein , lekin humare pass toh match se sirf ek hi user mila hai but ho skta hai multiple values bhi mil skti hai
+
+  // Output is form mein milega [ {} ]
 
   // jitni bhi aggregation pipelines hai wo mostly array hi return krti hai
 
@@ -596,12 +605,98 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "channel does not exist");
   }
 
-  // we can return array also but difficulties in frontend phir
+  // we can return array also but difficulties in frontend phir hojayegi
 
   return res
     .status(200)
     .json(new ApiResponse(200, channel[0], "User channel fetched sucessfully"));
 });
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+
+  const user = await User.aggregate([
+    {
+      $match: {
+        // _id : req.user?._id
+
+        // but yaha pe ho jayegi problem kyuki actually mein mongoose yaha pe kaam nahi krta hai
+
+        // kyuki aggregation pipelines ka jitna bhi code hai wo directly ho jaata hai, toh mongoose ki objectID humein banani padegi
+
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+
+    // user document ke andar video document ko join krna hai , abhi hum video document ke andar hai , aur humein waha se owner field ko join ( lookup lagayenge ) krna hai user document se 
+
+    // watch history mein videos ki _id se toh hi saare video documents aa rhe hai and us video document mein _id se owner field mein user document aa jayega
+
+    {
+      $lookup: {
+        from : "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as : "watchHistory",
+        pipeline : [
+          {
+            $lookup: {
+              from : "users",
+              localField : "owner",
+              foreignField: "_id",
+              as: "owner",
+          
+              //  $project: Reshapes documents by including or excluding fields, adding computed fields, or changing the structure and Modify the output format of the documents 
+
+              // ab jo jo data humein owner ke andar rkhna hai , kyuki humne yhi pipeline lagayi hai , toh jitna bhi project hum krenge wo saara owner field mein hi jaayega .....
+
+
+              // bahar nikal ke bhi kr skte the ya phir second stage pe lagate toh kya impact aata , structure change hojata hai
+
+              pipeline: [
+                {
+                  $project: {
+                    fullName : 1,
+                    username : 1,
+                    avatar : 1
+                  }
+                }
+              ]
+            }
+          },
+          // ab humara owner field ache se populate hogya hai , owner field pe hi project krdega
+
+          // ab pipeline toh humne lgadi and humare pass owner field and values bhi aagyi hai
+
+          // ab humare pass ayega owner ke field mein  Array mein ayenge objects , so humein array mein first index value nikalna padega 
+
+          // now ab hum data ka structure sudharne ka try kr rhe hai for frontend ke Ease ke liye , backend se ache se data bhejne ke liye
+
+          {
+            $addFields: {
+              // existing field hi overwrite hojayega
+              owner : {
+                $first : "$owner"
+              }
+            }
+          }
+        ]
+      }
+    } 
+    
+    //  ab humare pass bahut saare documents aagye hai video model ke , user document mein
+
+    // ab humein ek subpipeline lagani padegi t join ( lookup lagayene ) the user document in the owner field to get the information about the owner
+
+    // populate method bhi hota hai , but hum pipeline use kr rhe hai for sub pipelines likhne ke liye 
+
+  ]);
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200,user[0].watchHistory))
+
+  // there is no need to send unnecessary wrna baad mein delete krne padenge fields like password , rfresh token etc
+})
 
 export {
   registerUser,
@@ -614,4 +709,5 @@ export {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
+  getWatchHistory
 };
